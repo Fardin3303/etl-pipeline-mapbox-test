@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgis/postgis:14-3.3
+    container_name: etl_postgres
+    restart: always
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  etl:
+    build: .
+    container_name: etl_pipeline
+    restart: on-failure
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+
