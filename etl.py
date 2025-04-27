@@ -1,11 +1,9 @@
 import os
 import logging
-import requests
 import psycopg2
 from psycopg2.extras import execute_batch
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from dotenv import load_dotenv
+import overpass
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,7 +26,6 @@ db_params = {
 # Overpass API query to fetch roads for a specific area (e.g., Helsinki)
 city_name = os.getenv("CITY_NAME", "Helsinki")
 overpass_query = f"""
-[out:json];
 area["name"="{city_name}"]->.a;
 (
   way(area.a)[highway];
@@ -78,21 +75,15 @@ def create_table_if_not_exists():
         logger.exception(f"Database error during table creation: {e}")
 
 
-def extract(api_url):
-    session = requests.Session()
-    retries = Retry(total=5, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
-    session.mount("https://", HTTPAdapter(max_retries=retries))
-
-
+def extract():
+    api = overpass.API()
     try:
-        response = session.post(api_url, data={"data": overpass_query}, timeout=30)
-        response.raise_for_status()
-        logger.info(f"Successfully fetched data from {api_url}")
-        return response.json()
-    except requests.RequestException as e:
-        logger.error(f"Error fetching data: {e}")
-        return []
-
+        response = api.get(overpass_query, responseformat="json")
+        logger.info("Successfully fetched data using Overpass API.")
+        return response
+    except Exception as e:
+        logger.exception(f"Error fetching data from Overpass API: {e}")
+        return {}
 
 
 def transform(data):
@@ -119,8 +110,6 @@ def transform(data):
     return transformed_data
 
 
-
-
 def load(transformed_data):
     try:
         conn = psycopg2.connect(
@@ -141,15 +130,10 @@ def load(transformed_data):
 
 
 def main():
-    api_url = os.getenv("API_URL")
-    if not api_url:
-        logger.error("API_URL environment variable is not set.")
-        return
-
     # First ensure the table exists
     create_table_if_not_exists()
 
-    raw_data = extract(api_url)
+    raw_data = extract()
     if raw_data:
         main_roads = transform(raw_data)
         if main_roads:
