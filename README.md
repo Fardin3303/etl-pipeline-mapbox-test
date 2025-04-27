@@ -21,7 +21,7 @@ docker-compose up --build
 - Python 3.10
 - PostgreSQL 14
 - Docker & Docker Compose
-- psycopg2, requests, python-dotenv
+- psycopg2, python-dotenv, overpass
 
 ## Notes
 - `.env` file is excluded for security reasons.
