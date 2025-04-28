@@ -41,6 +41,7 @@ ON CONFLICT (road_id) DO NOTHING
 """
 
 CREATE_ROADS_TABLE_QUERY = """
+CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE TABLE IF NOT EXISTS roads (
     road_id VARCHAR PRIMARY KEY,
     road_name TEXT NOT NULL,
@@ -60,10 +61,6 @@ def create_table_if_not_exists():
             port=db_params["port"],
         )
         cur = conn.cursor()
-
-        # First ensure PostGIS extension is enabled
-        cur.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
-        conn.commit()
 
         # Now create the roads table
         cur.execute(CREATE_ROADS_TABLE_QUERY)
